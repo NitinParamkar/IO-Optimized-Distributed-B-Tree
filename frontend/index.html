@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DistriTree Control Panel</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="top-bar">
+        <h1>DistriTree: IO-Optimized Distributed B+ Tree</h1>
+    </div>
+
+    <div class="container">
+        <!-- Left Panel: Controls -->
+        <div class="panel left-panel">
+            <h2>Controls</h2>
+            <div class="input-group">
+                <label for="key-input">Key (e.g., Student ID)</label>
+                <input type="number" id="key-input" placeholder="Enter ID">
+            </div>
+            <div class="input-group">
+                <label for="value-input">Value (e.g., Name)</label>
+                <input type="text" id="value-input" placeholder="Enter Name">
+            </div>
+            
+            <div class="actions">
+                <button id="insert-btn" class="btn primary">Insert Data</button>
+                <button id="search-btn" class="btn secondary">Search Data</button>
+            </div>
+
+            <div class="optimization-control">
+                <label class="switch">
+                    <input type="checkbox" id="optimization-toggle" checked>
+                    <span class="slider round"></span>
+                </label>
+                <span>Enable B+ Tree Optimization</span>
+            </div>
+
+            <div id="metrics-display" class="metrics">
+                <h3>Last Operation Metrics</h3>
+                <p>Time Taken: <span id="time-taken">0</span> ms</p>
+                <p>Method: <span id="method-used">-</span></p>
+                <p>IO Cost: <span id="io-cost">-</span></p>
+            </div>
+            
+            <div id="result-display" class="result-box">
+                <h3>Result</h3>
+                <pre id="search-result">Waiting...</pre>
+            </div>
+        </div>
+
+        <!-- Middle Panel: Visual Tree -->
+        <div class="panel middle-panel">
+            <h2>Index Node (RAM) - B+ Tree</h2>
+            <div id="tree-container" class="tree-viz">
+                <!-- Tree nodes will be drawn here -->
+                <div class="placeholder-text">Tree visualization will appear here after insertion.</div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Storage Nodes -->
+        <div class="panel right-panel">
+            <h2>Storage Nodes (Network/Disk)</h2>
+            <div class="nodes-container">
+                <div id="node_1" class="storage-node">
+                    <div class="icon">SERVER 1</div>
+                    <div class="status">Idle</div>
+                </div>
+                <div id="node_2" class="storage-node">
+                    <div class="icon">SERVER 2</div>
+                    <div class="status">Idle</div>
+                </div>
+                <div id="node_3" class="storage-node">
+                    <div class="icon">SERVER 3</div>
+                    <div class="status">Idle</div>
+                </div>
+            </div>
+            <div id="log-container" class="log-box">
+                <h3>Network Log</h3>
+                <ul id="network-logs"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
