@@ -34,24 +34,51 @@ function flashNode(nodeId) {
 function renderTree(structure) {
     treeContainer.innerHTML = '';
 
-    if (!structure || structure.length === 0) {
+    if (!structure || !structure.keys) {
         treeContainer.innerHTML = '<div class="placeholder-text">Tree is empty.</div>';
         return;
     }
 
-    structure.forEach((level, levelIndex) => {
-        const levelDiv = document.createElement('div');
-        levelDiv.className = 'tree-level';
+    const treeRoot = document.createElement('div');
+    treeRoot.className = 'tf-tree';
 
-        level.forEach(node => {
-            const nodeDiv = document.createElement('div');
-            nodeDiv.className = `tree-node ${node.type.toLowerCase()}`;
-            nodeDiv.innerHTML = `<div class="keys">[${node.keys.join(', ')}]</div>`;
-            levelDiv.appendChild(nodeDiv);
+    const ul = document.createElement('ul');
+    ul.appendChild(createTreeNode(structure));
+    treeRoot.appendChild(ul);
+
+    treeContainer.appendChild(treeRoot);
+}
+
+function createTreeNode(nodeData) {
+    const li = document.createElement('li');
+
+    const nodeContent = document.createElement('div');
+    nodeContent.className = `tf-nc ${nodeData.type.toLowerCase()}`;
+
+    let html = `<div class="keys">[${nodeData.keys.join(', ')}]</div>`;
+
+    if (nodeData.type === 'Leaf' && nodeData.values && nodeData.values.length > 0) {
+        const vals = nodeData.values.map(v => {
+            if (v && v.node_id) {
+                return v.node_id.replace('node_', 'N');
+            }
+            return '?';
+        }).join(', ');
+        html += `<div class="values">Loc: [${vals}]</div>`;
+    }
+
+    nodeContent.innerHTML = html;
+    li.appendChild(nodeContent);
+
+    if (nodeData.children && nodeData.children.length > 0) {
+        const ul = document.createElement('ul');
+        nodeData.children.forEach(child => {
+            ul.appendChild(createTreeNode(child));
         });
+        li.appendChild(ul);
+    }
 
-        treeContainer.appendChild(levelDiv);
-    });
+    return li;
 }
 
 // Insert Data
