@@ -9,7 +9,7 @@ const treeContainer = document.getElementById('tree-container');
 const searchResult = document.getElementById('search-result');
 const timeTakenDisplay = document.getElementById('time-taken');
 const methodDisplay = document.getElementById('method-used');
-const ioCostDisplay = document.getElementById('io-cost');
+const pathTakenDisplay = document.getElementById('path-taken');
 const networkLogs = document.getElementById('network-logs');
 
 // Helper to log network activity
@@ -131,7 +131,7 @@ searchBtn.addEventListener('click', async () => {
     searchResult.textContent = 'Searching...';
     timeTakenDisplay.textContent = '...';
     methodDisplay.textContent = optimized ? 'B+ Tree Optimized' : 'Linear Scan';
-    ioCostDisplay.textContent = '...';
+    pathTakenDisplay.textContent = '...';
 
     logNetwork(`Searching Key: ${key} (Optimized: ${optimized})`);
 
@@ -142,7 +142,7 @@ searchBtn.addEventListener('click', async () => {
         if (data.result) {
             searchResult.textContent = JSON.stringify(data.result, null, 2);
             timeTakenDisplay.textContent = data.io_cost.toFixed(2);
-            ioCostDisplay.textContent = data.path_taken;
+            pathTakenDisplay.textContent = data.path_taken;
 
             if (optimized) {
                 // Highlight path logic could go here if we had node IDs in the tree structure
@@ -159,7 +159,7 @@ searchBtn.addEventListener('click', async () => {
         } else {
             searchResult.textContent = 'Not Found';
             timeTakenDisplay.textContent = data.io_cost.toFixed(2);
-            ioCostDisplay.textContent = data.path_taken;
+            pathTakenDisplay.textContent = data.path_taken;
 
             // Even if not found, flash the nodes we visited (which would be all of them in a full scan)
             if (!optimized && data.visited_nodes) {
@@ -173,6 +173,55 @@ searchBtn.addEventListener('click', async () => {
         searchResult.textContent = 'Error searching data.';
     } finally {
         searchBtn.disabled = false;
+    }
+});
+
+// Range Search
+const rangeBtn = document.getElementById('range-btn');
+const rangeStartInput = document.getElementById('range-start');
+const rangeEndInput = document.getElementById('range-end');
+
+rangeBtn.addEventListener('click', async () => {
+    const start = rangeStartInput.value;
+    const end = rangeEndInput.value;
+
+    if (!start || !end) {
+        alert('Please enter both Start and End keys');
+        return;
+    }
+
+    rangeBtn.disabled = true;
+    searchResult.textContent = 'Searching Range...';
+    timeTakenDisplay.textContent = '...';
+    methodDisplay.textContent = optimizationToggle.checked ? 'B+ Tree Range Scan' : 'Linear Range Scan';
+    pathTakenDisplay.textContent = '...';
+
+    logNetwork(`Range Search: ${start} to ${end} (Optimized: ${optimizationToggle.checked})`);
+
+    try {
+        const response = await fetch(`${API_BASE}/range?start=${start}&end=${end}&optimized=${optimizationToggle.checked}`);
+        const data = await response.json();
+
+        if (data.results) {
+            searchResult.textContent = JSON.stringify(data.results, null, 2);
+            timeTakenDisplay.textContent = data.io_cost.toFixed(2);
+            pathTakenDisplay.textContent = data.path_taken;
+
+            // Flash nodes involved in the range scan
+            if (data.visited_nodes) {
+                data.visited_nodes.forEach((nodeId, idx) => {
+                    setTimeout(() => flashNode(nodeId), idx * 200);
+                });
+            }
+
+        } else {
+            searchResult.textContent = 'Error: ' + (data.error || 'Unknown error');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        searchResult.textContent = 'Error performing range search.';
+    } finally {
+        rangeBtn.disabled = false;
     }
 });
 

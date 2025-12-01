@@ -13,6 +13,19 @@
     --internal-color: #2196f3;
 }
 
+/* Hide scrollbar for Chrome, Safari and Opera */
+::-webkit-scrollbar {
+    display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+* {
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
+}
+
 body {
     font-family: 'Roboto', sans-serif;
     background-color: var(--bg-color);
@@ -22,6 +35,8 @@ body {
     display: flex;
     flex-direction: column;
     height: 100vh;
+    overflow: hidden;
+    /* Prevent body scroll */
 }
 
 .top-bar {
@@ -29,6 +44,7 @@ body {
     padding: 10px 20px;
     border-bottom: 1px solid #333;
     text-align: center;
+    flex-shrink: 0;
 }
 
 .top-bar h1 {
@@ -41,6 +57,8 @@ body {
     display: flex;
     flex: 1;
     overflow: hidden;
+    /* Contain panels */
+    height: 100%;
 }
 
 .panel {
@@ -48,10 +66,13 @@ body {
     border-right: 1px solid #333;
     display: flex;
     flex-direction: column;
+    overflow-y: auto;
+    /* Enable scrolling for all panels */
 }
 
 .left-panel {
-    width: 250px;
+    width: 300px;
+    /* Slightly wider for controls */
     background-color: var(--panel-bg);
     flex-shrink: 0;
 }
@@ -60,7 +81,6 @@ body {
     flex: 1;
     background-color: #181818;
     position: relative;
-    overflow: auto;
 }
 
 .right-panel {
@@ -75,6 +95,8 @@ h2 {
     margin-top: 0;
     margin-bottom: 20px;
     color: var(--secondary-color);
+    border-bottom: 1px solid #333;
+    padding-bottom: 10px;
 }
 
 .input-group {
@@ -90,18 +112,30 @@ h2 {
 
 .input-group input {
     width: 100%;
-    padding: 8px;
+    padding: 10px;
     background-color: #333;
     border: 1px solid #444;
     color: white;
     border-radius: 4px;
     box-sizing: border-box;
+    font-size: 1rem;
+}
+
+.input-group input:focus {
+    border-color: var(--primary-color);
+    outline: none;
 }
 
 .actions {
     display: flex;
     gap: 10px;
     margin-bottom: 20px;
+}
+
+.divider {
+    border: 0;
+    border-top: 1px solid #333;
+    margin: 20px 0;
 }
 
 .btn {
@@ -111,7 +145,9 @@ h2 {
     border-radius: 4px;
     cursor: pointer;
     font-weight: bold;
-    transition: background-color 0.2s;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    font-size: 0.8rem;
 }
 
 .btn.primary {
@@ -121,6 +157,7 @@ h2 {
 
 .btn.primary:hover {
     background-color: #9965f4;
+    transform: translateY(-2px);
 }
 
 .btn.secondary {
@@ -130,6 +167,17 @@ h2 {
 
 .btn.secondary:hover {
     background-color: #01b4a4;
+    transform: translateY(-2px);
+}
+
+.btn.accent {
+    background-color: #ff4081;
+    color: white;
+}
+
+.btn.accent:hover {
+    background-color: #f50057;
+    transform: translateY(-2px);
 }
 
 .optimization-control {
@@ -138,6 +186,9 @@ h2 {
     gap: 10px;
     margin-bottom: 20px;
     font-size: 0.9rem;
+    background: #252525;
+    padding: 10px;
+    border-radius: 4px;
 }
 
 /* Toggle Switch */
@@ -199,41 +250,56 @@ input:checked+.slider:before {
 .metrics,
 .result-box {
     background-color: #2c2c2c;
-    padding: 10px;
+    padding: 15px;
     border-radius: 4px;
     margin-bottom: 15px;
+    border: 1px solid #333;
 }
 
 .metrics h3,
 .result-box h3 {
     margin-top: 0;
-    font-size: 1rem;
+    font-size: 0.9rem;
     color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
 }
 
 .metrics p {
     margin: 5px 0;
     font-size: 0.9rem;
+    display: flex;
+    justify-content: space-between;
+}
+
+.metrics span {
+    font-family: monospace;
+    color: var(--accent-color);
 }
 
 #search-result {
     white-space: pre-wrap;
     font-family: monospace;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     color: var(--success-color);
     margin: 0;
+    overflow-x: auto;
 }
 
 /* Tree Visualization */
 .tree-viz {
     padding: 40px;
-    overflow: auto;
     text-align: center;
+    min-width: 100%;
+    min-height: 100%;
+    box-sizing: border-box;
 }
 
 /* Better CSS Tree Approach */
 .tf-tree {
     display: inline-flex;
+    text-align: center;
 }
 
 .tf-tree ul {
@@ -242,6 +308,7 @@ input:checked+.slider:before {
     position: relative;
     margin: 0;
     padding-left: 0;
+    justify-content: center;
 }
 
 .tf-tree li {
@@ -280,7 +347,6 @@ input:checked+.slider:before {
 .tf-tree li:last-child::after {
     border-top: 0 none;
     border-left: 2px solid #555;
-    /* Keep vertical */
 }
 
 /* Remove vertical line for single child */
@@ -296,13 +362,20 @@ input:checked+.slider:before {
 /* Node Content */
 .tf-nc {
     border: 2px solid #555;
-    padding: 10px;
-    border-radius: 5px;
+    padding: 10px 15px;
+    border-radius: 8px;
     background-color: #2c2c2c;
     position: relative;
     z-index: 1;
-    min-width: 60px;
+    min-width: 80px;
     text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s;
+}
+
+.tf-nc:hover {
+    transform: scale(1.05);
+    z-index: 10;
 }
 
 .tf-nc.leaf {
@@ -337,48 +410,68 @@ input:checked+.slider:before {
 .tf-nc .keys {
     font-weight: bold;
     color: white;
+    font-size: 1.1rem;
 }
 
 .tf-nc .values {
     font-size: 0.75rem;
     color: #ccc;
-    margin-top: 4px;
+    margin-top: 6px;
     border-top: 1px solid #555;
-    padding-top: 4px;
+    padding-top: 6px;
 }
 
 /* Storage Nodes */
 .nodes-container {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 15px;
 }
 
 .storage-node {
     background-color: #333;
-    padding: 20px;
+    padding: 15px;
     border-radius: 8px;
     text-align: center;
     border: 2px solid transparent;
-    transition: all 0.2s;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+}
+
+.storage-node::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, rgba(0, 0, 0, 0) 70%);
+    opacity: 0;
+    transition: opacity 0.3s;
 }
 
 .storage-node.active {
     border-color: var(--success-color);
     background-color: #1b5e20;
-    box-shadow: 0 0 15px var(--success-color);
+    box-shadow: 0 0 20px rgba(0, 200, 83, 0.4);
+    transform: scale(1.02);
+}
+
+.storage-node.active::after {
+    opacity: 1;
 }
 
 .storage-node .icon {
     font-size: 1.2rem;
     font-weight: bold;
     margin-bottom: 5px;
-    color: #aaa;
+    color: #fff;
 }
 
 .storage-node .status {
     font-size: 0.8rem;
-    color: #777;
+    color: #aaa;
 }
 
 .log-box {
@@ -395,15 +488,30 @@ input:checked+.slider:before {
     margin: 0;
     font-size: 0.8rem;
     color: #aaa;
+    font-family: monospace;
 }
 
 #network-logs li {
     margin-bottom: 5px;
     border-bottom: 1px solid #333;
-    padding-bottom: 2px;
+    padding-bottom: 4px;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .placeholder-text {
     color: #555;
     margin-top: 50px;
+    font-style: italic;
 }

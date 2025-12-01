@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
     <div class="top-bar">
         <h1>IO-Optimized Distributed B+ Tree</h1>
@@ -24,10 +26,24 @@
                 <label for="value-input">Value (e.g., Name)</label>
                 <input type="text" id="value-input" placeholder="Enter Name">
             </div>
-            
+
             <div class="actions">
                 <button id="insert-btn" class="btn primary">Insert Data</button>
                 <button id="search-btn" class="btn secondary">Search Data</button>
+            </div>
+
+            <hr class="divider">
+            <h3>Range Search</h3>
+            <div class="input-group">
+                <label for="range-start">Start Key</label>
+                <input type="number" id="range-start" placeholder="Start ID">
+            </div>
+            <div class="input-group">
+                <label for="range-end">End Key</label>
+                <input type="number" id="range-end" placeholder="End ID">
+            </div>
+            <div class="actions">
+                <button id="range-btn" class="btn accent">Search Range</button>
             </div>
 
             <div class="optimization-control">
@@ -42,9 +58,9 @@
                 <h3>Last Operation Metrics</h3>
                 <p>Time Taken: <span id="time-taken">0</span> ms</p>
                 <p>Method: <span id="method-used">-</span></p>
-                <p>IO Cost: <span id="io-cost">-</span></p>
+                <p>Path: <span id="path-taken">-</span></p>
             </div>
-            
+
             <div id="result-display" class="result-box">
                 <h3>Result</h3>
                 <pre id="search-result">Waiting...</pre>
@@ -86,4 +102,5 @@
 
     <script src="script.js"></script>
 </body>
+
 </html>

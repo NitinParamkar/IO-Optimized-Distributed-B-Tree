@@ -14,70 +14,86 @@ class BPlusTree:
         self.order = order
 
     def insert(self, key, value):
-        root = self.root
-        if len(root.keys) == (self.order - 1):
+        # Start recursive insert from root
+        result = self._insert_recursive(self.root, key, value)
+        
+        if result:
+            # Root split
+            split_key, new_node = result
             new_root = BPlusTreeNode(leaf=False)
+            new_root.keys = [split_key]
+            new_root.children = [self.root, new_node]
             self.root = new_root
-            new_root.children.append(root)
-            self._split_child(new_root, 0)
-            self._insert_non_full(new_root, key, value)
-        else:
-            self._insert_non_full(root, key, value)
 
-    def _insert_non_full(self, node, key, value):
+    def _insert_recursive(self, node, key, value):
         if node.leaf:
-            # Insert into leaf node
+            # Insert into leaf
             bisect.insort(node.keys, key)
             idx = node.keys.index(key)
             node.values.insert(idx, value)
+            
+            # Check for overflow
+            if len(node.keys) > (self.order - 1):
+                return self._split_node(node)
+            return None
         else:
             # Internal node
             idx = bisect.bisect_right(node.keys, key)
             child = node.children[idx]
-            if len(child.keys) == (self.order - 1):
-                self._split_child(node, idx)
-                if key >= node.keys[idx]:
-                    idx += 1
-            self._insert_non_full(node.children[idx], key, value)
+            
+            result = self._insert_recursive(child, key, value)
+            
+            if result:
+                split_key, new_child = result
+                # Insert promoted key and new child into current node
+                node.keys.insert(idx, split_key)
+                node.children.insert(idx + 1, new_child)
+                
+                # Check for overflow
+                if len(node.keys) > (self.order - 1):
+                    return self._split_node(node)
+            
+            return None
 
-    def _split_child(self, parent, idx):
-        child = parent.children[idx]
-        new_child = BPlusTreeNode(leaf=child.leaf)
+    def _split_node(self, node):
+        mid = self.order // 2
+        new_node = BPlusTreeNode(leaf=node.leaf)
         
-        mid = (self.order) // 2
-        
-        if child.leaf:
+        if node.leaf:
             # Leaf Split: Middle key is COPIED up
-            split_key = child.keys[mid]
+            # Split point: mid
+            # Left: [:mid], Right: [mid:]
+            # Promoted key: keys[mid]
             
-            # Right split
-            new_child.keys = child.keys[mid:]
-            new_child.values = child.values[mid:]
+            split_key = node.keys[mid]
             
-            # Left split
-            child.keys = child.keys[:mid]
-            child.values = child.values[:mid]
+            new_node.keys = node.keys[mid:]
+            new_node.values = node.values[mid:]
+            
+            node.keys = node.keys[:mid]
+            node.values = node.values[:mid]
             
             # Link leaves
-            new_child.next = child.next
-            child.next = new_child
+            new_node.next = node.next
+            node.next = new_node
             
-            parent.keys.insert(idx, split_key)
-            parent.children.insert(idx + 1, new_child)
+            return split_key, new_node
             
         else:
             # Internal Split: Middle key is PUSHED up
-            mid = (self.order - 1) // 2
-            split_key = child.keys[mid]
+            # Split point: mid
+            # Left: [:mid], Right: [mid+1:]
+            # Promoted key: keys[mid]
             
-            new_child.keys = child.keys[mid+1:]
-            new_child.children = child.children[mid+1:]
+            split_key = node.keys[mid]
             
-            child.keys = child.keys[:mid]
-            child.children = child.children[:mid+1]
+            new_node.keys = node.keys[mid+1:]
+            new_node.children = node.children[mid+1:]
             
-            parent.keys.insert(idx, split_key)
-            parent.children.insert(idx + 1, new_child)
+            node.keys = node.keys[:mid]
+            node.children = node.children[:mid+1]
+            
+            return split_key, new_node
 
     def search(self, key):
         # Returns metadata and a trace of the path taken
@@ -95,6 +111,36 @@ class BPlusTree:
             idx = current.keys.index(key)
             return current.values[idx], path
         return None, path
+
+    def range_search(self, start_key, end_key):
+        # 1. Find the starting leaf node
+        current = self.root
+        path = ["Root"]
+        while not current.leaf:
+            idx = bisect.bisect_right(current.keys, start_key)
+            current = current.children[idx]
+            path.append(f"Internal Node (keys: {current.keys})")
+            
+        # 2. Traverse linked leaves
+        results = []
+        path.append(f"Start Leaf (keys: {current.keys})")
+        
+        while current:
+            for i, key in enumerate(current.keys):
+                if key >= start_key:
+                    if key <= end_key:
+                        results.append({
+                            "key": key,
+                            "value": current.values[i]
+                        })
+                    else:
+                        # Exceeded end_key
+                        return results, path
+            current = current.next
+            if current:
+                 path.append(f"Next Leaf (keys: {current.keys})")
+                 
+        return results, path
 
     def get_tree_structure(self):
         # Recursive helper to return nested structure

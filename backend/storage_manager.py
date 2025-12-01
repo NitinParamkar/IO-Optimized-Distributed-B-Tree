@@ -80,3 +80,42 @@ class StorageManager:
             "path_taken": " -> ".join(path_taken),
             "visited_nodes": visited_nodes
         }
+
+    def scan_range(self, start_key, end_key):
+        # Simulates a linear scan across all nodes to find keys in range
+        start_time = time.time()
+        results = []
+        path_taken = []
+        visited_nodes = []
+        
+        try:
+            start_key = int(start_key)
+            end_key = int(end_key)
+        except:
+            pass
+            
+        for node_id, records in self.nodes.items():
+            path_taken.append(f"Scanning {node_id}...")
+            visited_nodes.append(node_id)
+            time.sleep(0.5) # Network latency
+            
+            for rid, record in records.items():
+                key = record.get("key")
+                try:
+                    key = int(key)
+                except:
+                    pass
+                    
+                if key >= start_key and key <= end_key:
+                    results.append({
+                        "key": key,
+                        "value": record
+                    })
+                    
+        end_time = time.time()
+        return {
+            "results": sorted(results, key=lambda x: x['key']),
+            "io_cost": (end_time - start_time) * 1000,
+            "path_taken": " -> ".join(path_taken),
+            "visited_nodes": visited_nodes
+        }

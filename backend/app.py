@@ -84,6 +84,64 @@ def search():
             "method": "Linear Scan (Unoptimized)"
         })
 
+@app.route('/range', methods=['GET'])
+def range_search():
+    start_key = request.args.get('start')
+    end_key = request.args.get('end')
+    optimized = request.args.get('optimized', 'true').lower() == 'true'
+    
+    if not start_key or not end_key:
+        return jsonify({"error": "Start and End keys are required"}), 400
+        
+    try:
+        start_key = int(start_key)
+        end_key = int(end_key)
+    except ValueError:
+        return jsonify({"error": "Keys must be integers"}), 400
+        
+    if optimized:
+        start_time = time.time()
+        # 1. Get pointers from B+ Tree (Fast)
+        index_results, path = bptree.range_search(start_key, end_key)
+        
+        final_results = []
+        visited_nodes = set()
+        
+        # 2. Fetch actual data from Storage (Slow Random IO)
+        for r in index_results:
+            val = r.get('value')
+            if isinstance(val, dict) and 'node_id' in val:
+                node_id = val['node_id']
+                record_id = val['record_id']
+                visited_nodes.add(node_id)
+                
+                # Simulate fetching the actual record
+                record = storage.fetch_data(node_id, record_id)
+                if record:
+                    final_results.append({
+                        "key": r['key'],
+                        "value": record # Return the full record
+                    })
+        
+        end_time = time.time()
+        
+        return jsonify({
+            "results": final_results,
+            "path_taken": " -> ".join(path),
+            "io_cost": (end_time - start_time) * 1000, # ms
+            "visited_nodes": list(visited_nodes)
+        })
+    else:
+        # Unoptimized: Linear Scan
+        scan_result = storage.scan_range(start_key, end_key)
+        
+        return jsonify({
+            "results": scan_result['results'],
+            "io_cost": scan_result['io_cost'],
+            "path_taken": scan_result['path_taken'],
+            "visited_nodes": scan_result['visited_nodes']
+        })
+
 @app.route('/tree', methods=['GET'])
 def get_tree():
     return jsonify(bptree.get_tree_structure())
