@@ -4,9 +4,9 @@ class BPlusTreeNode:
     def __init__(self, leaf=False):
         self.leaf = leaf
         self.keys = []
-        self.values = []  # In B-Tree, all nodes hold values
         self.children = [] 
-        # self.next = None # No linked leaves in B-Tree
+        self.values = []  # Only leaf nodes hold values
+        self.next = None  # Link to the next leaf node
 
 class BPlusTree:
     def __init__(self, order=4):
@@ -25,91 +25,84 @@ class BPlusTree:
             self._insert_non_full(root, key, value)
 
     def _insert_non_full(self, node, key, value):
-        if key in node.keys:
-            # Update existing key (B-Tree property: Key exists only once)
-            idx = node.keys.index(key)
-            node.values[idx] = value
-            return
-
         if node.leaf:
+            # Insert into leaf node
             bisect.insort(node.keys, key)
             idx = node.keys.index(key)
             node.values.insert(idx, value)
         else:
+            # Internal node
             idx = bisect.bisect_right(node.keys, key)
             child = node.children[idx]
             if len(child.keys) == (self.order - 1):
                 self._split_child(node, idx)
-                if key > node.keys[idx]:
+                if key >= node.keys[idx]:
                     idx += 1
-                elif key == node.keys[idx]:
-                    # Key was promoted to this node
-                    node.values[idx] = value
-                    return
             self._insert_non_full(node.children[idx], key, value)
 
     def _split_child(self, parent, idx):
         child = parent.children[idx]
         new_child = BPlusTreeNode(leaf=child.leaf)
-        mid = (self.order - 1) // 2
         
-        # B-Tree Split: Middle Key AND Value move UP to parent
-        # They are REMOVED from the child
-        mid_key = child.keys[mid]
-        mid_value = child.values[mid]
+        mid = (self.order) // 2
         
-        parent.keys.insert(idx, mid_key)
-        parent.values.insert(idx, mid_value)
-        parent.children.insert(idx + 1, new_child)
-        
-        # Right side moves to new_child
-        new_child.keys = child.keys[mid+1:]
-        new_child.values = child.values[mid+1:]
-        
-        # Left side stays in child (excluding mid)
-        child.keys = child.keys[:mid]
-        child.values = child.values[:mid]
-        
-        if not child.leaf:
+        if child.leaf:
+            # Leaf Split: Middle key is COPIED up
+            split_key = child.keys[mid]
+            
+            # Right split
+            new_child.keys = child.keys[mid:]
+            new_child.values = child.values[mid:]
+            
+            # Left split
+            child.keys = child.keys[:mid]
+            child.values = child.values[:mid]
+            
+            # Link leaves
+            new_child.next = child.next
+            child.next = new_child
+            
+            parent.keys.insert(idx, split_key)
+            parent.children.insert(idx + 1, new_child)
+            
+        else:
+            # Internal Split: Middle key is PUSHED up
+            mid = (self.order - 1) // 2
+            split_key = child.keys[mid]
+            
+            new_child.keys = child.keys[mid+1:]
             new_child.children = child.children[mid+1:]
+            
+            child.keys = child.keys[:mid]
             child.children = child.children[:mid+1]
+            
+            parent.keys.insert(idx, split_key)
+            parent.children.insert(idx + 1, new_child)
 
     def search(self, key):
         # Returns metadata and a trace of the path taken
         current = self.root
         path = ["Root"]
         
-        while True:
-            if key in current.keys:
-                idx = current.keys.index(key)
-                path.append(f"Found in Node (keys: {current.keys})")
-                return current.values[idx], path
-            
-            if current.leaf:
-                path.append(f"Leaf Node (keys: {current.keys})")
-                return None, path
-                
-            idx = bisect.bisect_right(current.keys, key)
+        while not current.leaf:
             path.append(f"Internal Node (keys: {current.keys})")
+            idx = bisect.bisect_right(current.keys, key)
             current = current.children[idx]
+            
+        path.append(f"Leaf Node (keys: {current.keys})")
+        
+        if key in current.keys:
+            idx = current.keys.index(key)
+            return current.values[idx], path
+        return None, path
 
     def get_tree_structure(self):
-        # Helper to visualize the tree
-        levels = []
-        queue = [(self.root, 0)]
-        
-        while queue:
-            node, level = queue.pop(0)
-            if len(levels) <= level:
-                levels.append([])
-            
-            node_data = {
+        # Recursive helper to return nested structure
+        def serialize(node):
+            return {
                 "keys": node.keys,
-                "type": "Leaf" if node.leaf else "Internal"
+                "values": node.values if node.leaf else [],
+                "type": "Leaf" if node.leaf else "Internal",
+                "children": [serialize(child) for child in node.children] if not node.leaf else []
             }
-            levels[level].append(node_data)
-            
-            if not node.leaf:
-                for child in node.children:
-                    queue.append((child, level + 1))
-        return levels
+        return serialize(self.root)
