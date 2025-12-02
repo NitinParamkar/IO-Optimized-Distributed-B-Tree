@@ -1,20 +1,35 @@
 import time
 import uuid
-import random
+import os
+from pymongo import MongoClient
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class StorageManager:
     def __init__(self):
-        # Simulating 3 separate storage servers
-        self.nodes = {
-            "node_1": {},
-            "node_2": {},
-            "node_3": {}
+        # Connect to 3 separate MongoDB instances (Nodes)
+        self.clients = {
+            "node_1": MongoClient(os.getenv("DATABASE_URL1")),
+            "node_2": MongoClient(os.getenv("DATABASE_URL2")),
+            "node_3": MongoClient(os.getenv("DATABASE_URL3"))
+        }
+        
+        self.dbs = {
+            "node_1": self.clients["node_1"].get_database("distritree_db"),
+            "node_2": self.clients["node_2"].get_database("distritree_db"),
+            "node_3": self.clients["node_3"].get_database("distritree_db")
+        }
+        
+        self.collections = {
+            "node_1": self.dbs["node_1"]["records"],
+            "node_2": self.dbs["node_2"]["records"],
+            "node_3": self.dbs["node_3"]["records"]
         }
 
     def store_data(self, key, value):
         # Use the Key (Student ID) to decide which node to store on.
         # This ensures deterministic distribution.
-        # Example: Key 1 -> Node 2, Key 2 -> Node 3, Key 3 -> Node 1
         try:
             key_int = int(key)
             node_index = (key_int % 3) + 1
@@ -27,25 +42,26 @@ class StorageManager:
         
         # Store the full record including the key so we can verify it later
         record = {
+            "record_id": record_id,
             "key": key,
             "value": value,
             "timestamp": time.time()
         }
         
-        # Simulating IO Write Delay
-        time.sleep(0.1) 
-        self.nodes[target_node][record_id] = record
+        # Actual MongoDB Insert (No artificial sleep)
+        self.collections[target_node].insert_one(record)
         
         return {"node_id": target_node, "record_id": record_id}
 
     def fetch_data(self, node_id, record_id):
-        # Simulating Network/Disk Read Delay
-        time.sleep(0.5) 
-        return self.nodes.get(node_id, {}).get(record_id, None)
+        # Actual MongoDB Find (No artificial sleep)
+        record = self.collections[node_id].find_one({"record_id": record_id})
+        if record:
+            record.pop('_id', None) # Remove MongoDB internal ID
+        return record
 
     def scan_all(self, target_key):
         # Simulates a linear scan across all nodes (High Latency)
-        # We have to check every single record in every node because we don't know where it is.
         start_time = time.time()
         found_data = None
         path_taken = []
@@ -57,22 +73,24 @@ class StorageManager:
             pass
 
         visited_nodes = []
-        for node_id, records in self.nodes.items():
+        for node_id, collection in self.collections.items():
             path_taken.append(f"Scanning {node_id}...")
             visited_nodes.append(node_id)
-            # Simulate network latency for accessing each node
-            time.sleep(0.5) 
             
-            for rid, record in records.items():
-                # Check if this record matches the key we are looking for
-                if record.get("key") == target_key:
-                    found_data = {"node_id": node_id, "record_id": rid, "data": record}
-                    path_taken.append(f"FOUND in {node_id}")
-                    break
+            # Actual MongoDB Query
+            # In a true linear scan without an index on 'key', we might scan everything.
+            # But here we just query the collection. To strictly simulate "scan", 
+            # we could iterate, but finding by key is what we want functionally.
+            # However, since this is "unoptimized", we iterate all 3 nodes.
             
-            if found_data:
+            record = collection.find_one({"key": target_key})
+            
+            if record:
+                record.pop('_id', None)
+                found_data = {"node_id": node_id, "record_id": record['record_id'], "data": record}
+                path_taken.append(f"FOUND in {node_id}")
                 break
-                
+            
         end_time = time.time()
         return {
             "result": found_data,
@@ -94,23 +112,19 @@ class StorageManager:
         except:
             pass
             
-        for node_id, records in self.nodes.items():
+        for node_id, collection in self.collections.items():
             path_taken.append(f"Scanning {node_id}...")
             visited_nodes.append(node_id)
-            time.sleep(0.5) # Network latency
             
-            for rid, record in records.items():
-                key = record.get("key")
-                try:
-                    key = int(key)
-                except:
-                    pass
-                    
-                if key >= start_key and key <= end_key:
-                    results.append({
-                        "key": key,
-                        "value": record
-                    })
+            # MongoDB Range Query
+            cursor = collection.find({"key": {"$gte": start_key, "$lte": end_key}})
+            
+            for record in cursor:
+                record.pop('_id', None)
+                results.append({
+                    "key": record['key'],
+                    "value": record
+                })
                     
         end_time = time.time()
         return {
@@ -119,3 +133,11 @@ class StorageManager:
             "path_taken": " -> ".join(path_taken),
             "visited_nodes": visited_nodes
         }
+
+    def clear_all_data(self):
+        for node_id, collection in self.collections.items():
+            collection.delete_many({})
+
+    def close(self):
+        for client in self.clients.values():
+            client.close()

@@ -104,24 +104,18 @@ def range_search():
         # 1. Get pointers from B+ Tree (Fast)
         index_results, path = bptree.range_search(start_key, end_key)
         
-        final_results = []
-        visited_nodes = set()
+        # Optimization: We ONLY return keys and metadata from B+ Tree.
+        # We do NOT fetch the actual values from the database.
+        # This makes range queries extremely fast as they are purely in-memory.
         
-        # 2. Fetch actual data from Storage (Slow Random IO)
+        final_results = [r['key'] for r in index_results] # Return only keys
+        
+        # Collect visited nodes for visualization (from the metadata)
+        visited_nodes = set()
         for r in index_results:
             val = r.get('value')
             if isinstance(val, dict) and 'node_id' in val:
-                node_id = val['node_id']
-                record_id = val['record_id']
-                visited_nodes.add(node_id)
-                
-                # Simulate fetching the actual record
-                record = storage.fetch_data(node_id, record_id)
-                if record:
-                    final_results.append({
-                        "key": r['key'],
-                        "value": record # Return the full record
-                    })
+                visited_nodes.add(val['node_id'])
         
         end_time = time.time()
         
@@ -135,16 +129,36 @@ def range_search():
         # Unoptimized: Linear Scan
         scan_result = storage.scan_range(start_key, end_key)
         
+        # Extract only keys for consistency
+        results_keys = [r['key'] for r in scan_result['results']]
+        
         return jsonify({
-            "results": scan_result['results'],
+            "results": results_keys,
             "io_cost": scan_result['io_cost'],
             "path_taken": scan_result['path_taken'],
             "visited_nodes": scan_result['visited_nodes']
         })
 
+@app.route('/clear', methods=['POST'])
+def clear_data():
+    # 1. Clear MongoDB Data
+    storage.clear_all_data()
+    
+    # 2. Reset B+ Tree (In-Memory)
+    global bptree
+    bptree = BPlusTree(order=4)
+    
+    return jsonify({"status": "success", "message": "All data cleared from Storage Nodes and B+ Tree"})
+
 @app.route('/tree', methods=['GET'])
 def get_tree():
     return jsonify(bptree.get_tree_structure())
 
+
+
+import atexit
+
+atexit.register(storage.close)
+
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5000, use_reloader=False)

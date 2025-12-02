@@ -203,7 +203,10 @@ rangeBtn.addEventListener('click', async () => {
         const data = await response.json();
 
         if (data.results) {
-            searchResult.textContent = JSON.stringify(data.results, null, 2);
+            // Format as a clean list of keys
+            const keysList = Array.isArray(data.results) ? data.results.join(', ') : data.results;
+            searchResult.textContent = `Keys found: [${keysList}]`;
+
             timeTakenDisplay.textContent = data.io_cost.toFixed(2);
             pathTakenDisplay.textContent = data.path_taken;
 
@@ -222,6 +225,31 @@ rangeBtn.addEventListener('click', async () => {
         searchResult.textContent = 'Error performing range search.';
     } finally {
         rangeBtn.disabled = false;
+    }
+});
+
+
+
+// Reset / Clear All Data
+const resetBtn = document.getElementById('reset-btn');
+resetBtn.addEventListener('click', async () => {
+    resetBtn.disabled = true;
+    logNetwork('Resetting System (Clearing ALL Data)...');
+
+    try {
+        const response = await fetch(`${API_BASE}/clear`, { method: 'POST' });
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            logNetwork('System Reset Complete.');
+            renderTree({}); // Clear tree
+            searchResult.textContent = 'System Reset Successfully.';
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        searchResult.textContent = 'Error resetting system.';
+    } finally {
+        resetBtn.disabled = false;
     }
 });
 
