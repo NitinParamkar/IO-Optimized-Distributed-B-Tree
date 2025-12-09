@@ -19,7 +19,15 @@ def insert():
     if not key or not value:
         return jsonify({"error": "Key and Value are required"}), 400
 
-    # 1. Store data in the "Slow" Storage Network
+    try:
+        key = int(key)
+    except ValueError:
+        return jsonify({"error": "Key must be an integer"}), 400
+
+    # 0. Check for Duplicates (Unique Constraint)
+    existing_metadata, _ = bptree.search(key)
+    if existing_metadata:
+         return jsonify({"error": f"Key {key} already exists! Duplicates not allowed."}), 409
     # We pass the Key now so we can distribute based on it
     location_metadata = storage.store_data(key, value)
     
@@ -47,7 +55,7 @@ def search():
         pass # Keep as string if conversion fails
 
 
-    start_time = time.time()
+    start_time = time.perf_counter()
     
     if optimized:
         # 1. Search the Tree (Fast, In-Memory)
@@ -63,7 +71,7 @@ def search():
             result = None
             path.append("Not Found")
             
-        end_time = time.time()
+        end_time = time.perf_counter()
         
         return jsonify({
             "result": result,
@@ -100,15 +108,38 @@ def range_search():
         return jsonify({"error": "Keys must be integers"}), 400
         
     if optimized:
-        start_time = time.time()
+        start_time = time.perf_counter()
         # 1. Get pointers from B+ Tree (Fast)
         index_results, path = bptree.range_search(start_key, end_key)
         
-        # Optimization: We ONLY return keys and metadata from B+ Tree.
-        # We do NOT fetch the actual values from the database.
-        # This makes range queries extremely fast as they are purely in-memory.
+        # 2. Fetch actual data from Storage (Simulating Random I/O)
+        # BATCH OPTIMIZATION: We group keys by Server (Node) to minimize network calls.
         
-        final_results = [r['key'] for r in index_results] # Return only keys
+        # Step A: Group by Node
+        grouped_requests = {}
+        for r in index_results:
+            metadata = r['value']
+            node_id = metadata['node_id']
+            record_id = metadata['record_id']
+            
+            if node_id not in grouped_requests:
+                grouped_requests[node_id] = []
+            grouped_requests[node_id].append(record_id)
+            
+        final_results = []
+        
+        # Step B: Execute Batch Requests (One per Node)
+        for node_id, record_ids in grouped_requests.items():
+            # ONE network call per server involved
+            batch_records = storage.fetch_batch(node_id, record_ids)
+            for rec in batch_records:
+                final_results.append({
+                    "key": rec['key'],
+                    "value": rec['value']
+                })
+
+        # Sort the final results because batch fetching might mess up the order
+        final_results.sort(key=lambda x: x['key'])
         
         # Collect visited nodes for visualization (from the metadata)
         visited_nodes = set()
@@ -117,7 +148,7 @@ def range_search():
             if isinstance(val, dict) and 'node_id' in val:
                 visited_nodes.add(val['node_id'])
         
-        end_time = time.time()
+        end_time = time.perf_counter()
         
         return jsonify({
             "results": final_results,
@@ -129,11 +160,19 @@ def range_search():
         # Unoptimized: Linear Scan
         scan_result = storage.scan_range(start_key, end_key)
         
-        # Extract only keys for consistency
-        results_keys = [r['key'] for r in scan_result['results']]
+        # Extract keys and values
+        # storage.scan_range returns items as {'key': k, 'value': record_dict}
+        formatted_results = []
+        for r in scan_result['results']:
+            # r['value'] is the full mongo record, so we grab r['value']['value']
+            val = r['value'].get('value', '?')
+            formatted_results.append({
+                "key": r['key'],
+                "value": val
+            })
         
         return jsonify({
-            "results": results_keys,
+            "results": formatted_results,
             "io_cost": scan_result['io_cost'],
             "path_taken": scan_result['path_taken'],
             "visited_nodes": scan_result['visited_nodes']
@@ -161,4 +200,6 @@ import atexit
 atexit.register(storage.close)
 
 if __name__ == '__main__':
+    print("Clearing previous data from MongoDB...")
+    storage.clear_all_data()
     app.run(debug=True, port=5000, use_reloader=False)

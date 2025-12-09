@@ -1,4 +1,4 @@
-# DistriTree: IO-Optimized Distributed B+ Tree Indexing System
+    # DistriTree: IO-Optimized Distributed B+ Tree Indexing System
 
 ## 1. Problem Statement
 In large-scale distributed storage systems (like SANs or cloud storage), data is scattered across multiple physical nodes (servers/disks). 
@@ -26,34 +26,61 @@ This project is a simulation of the above architecture, designed to visually dem
 ### Architecture
 -   **Frontend (Dashboard):** A visual control panel to insert data, search for keys, and view the system state.
     -   **Visual Tree:** Displays the live B+ Tree structure growing and splitting.
-    -   **Storage Nodes:** Simulates 3 remote servers (Node 1, Node 2, Node 3).
+    -   **Storage Nodes:** Connects to **3 real MongoDB instances** (Node 1, Node 2, Node 3) to store record data.
     -   **Animations:** visually shows the "path" taken by the search algorithm.
 -   **Backend (Python/Flask):**
     -   **B+ Tree Logic:** A custom implementation of a B+ Tree (Order 4) that handles splitting and indexing.
-    -   **Storage Simulation:** A `StorageManager` that introduces artificial latency (500ms) to simulate real-world network/disk I/O.
+    -   **Storage Manager:** Manages connections to 3 distributed MongoDB databases using `PyMongo`. Ensures deterministic sharding based on the Key.
     -   **API:** Endpoints to `insert` and `search` data.
 
 ### Features
-1.  **Distributed Storage Simulation:** Data is sharded across 3 nodes based on the Key (`Key % 3`).
+1.  **Distributed Storage with MongoDB:** Data is sharded across 3 MongoDB instances based on the Key (`Key % 3`).
 2.  **Real-Time Visualization:** Watch the Tree grow and nodes flash as they are accessed.
 3.  **Optimization Toggle:**
-    -   **Optimized (B+ Tree):** Instant lookup. Highlights the path in the tree and accesses only the correct storage node.
-    -   **Unoptimized (Linear Scan):** Slow. Visually scans every server one by one until data is found.
-4.  **Metrics:** Displays the "Time Taken" and "IO Cost" to prove the efficiency of the B+ Tree.
+    -   **Optimized (B+ Tree):** Instant lookup. Highlights the path in the tree and accesses only the correct MongoDB node.
+    -   **Unoptimized (Linear Scan):** Visually scans every MongoDB node one by one until data is found, demonstrating the inefficiency of full scans.
+4.  **Range Queries:**
+    -   **Optimized:** Uses the B+ Tree's linked leaf nodes to efficiently fetch a range of keys (e.g., 10-50) by traversing pointers, minimizing database calls.
+    -   **Unoptimized:** Linearly scans all MongoDB nodes to find keys within the range.
+5.  **Metrics:** Displays the "Time Taken", "IO Cost", and "Path Taken" to prove the efficiency of the B+ Tree.
+6.  **System Reset:** One-click ability to clear all data from both the B+ Tree (In-Memory) and the MongoDB Storage Nodes.
+7.  **Clean UI:** A modern, dark-themed dashboard with hidden scrollbars for a sleek look.
 
 ### How to Run
-1.  **Backend:**
+#### Prerequisites
+-   **MongoDB:** Ensure you have MongoDB installed locally or have access to a cloud instance.
+-   **Python 3.8+**
+
+#### Backend Setup
+1.  **Navigate to backend:**
     ```bash
     cd backend
-    python -m venv venv
-    .venv\Scripts\activate
-    pip install -r requirements.txt
-    python app.py
-    
     ```
-2.  **Frontend:**
-    -   Open `frontend/index.html` in any modern web browser.
+2.  **Create Virtual Environment:**
+    ```bash
+    python -m venv venv
+    .venv\Scripts\activate  # Windows
+    # source venv/bin/activate # Mac/Linux
+    ```
+3.  **Install Dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+4.  **Configure Environment:**
+    Create a `.env` file in the `backend` directory with your MongoDB connection strings:
+    ```env
+    DATABASE_URL1=mongodb://localhost:27017/
+    DATABASE_URL2=mongodb://localhost:27017/
+    DATABASE_URL3=mongodb://localhost:27017/
+    ```
+5.  **Run Server:**
+    ```bash
+    python app.py
+    ```
+
+#### Frontend Setup
+1.  Open `frontend/index.html` in any modern web browser.
 
 ### Tech Stack
 -   **Frontend:** HTML5, CSS3 (Dark Theme), Vanilla JavaScript.
--   **Backend:** Python 3, Flask.
+-   **Backend:** Python 3, Flask, **MongoDB**, **PyMongo**.

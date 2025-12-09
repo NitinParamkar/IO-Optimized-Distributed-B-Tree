@@ -60,9 +60,18 @@ class StorageManager:
             record.pop('_id', None) # Remove MongoDB internal ID
         return record
 
+    def fetch_batch(self, node_id, record_ids):
+        # Optimized: Fetch multiple records in ONE network call using $in
+        cursor = self.collections[node_id].find({"record_id": {"$in": record_ids}})
+        results = []
+        for record in cursor:
+            record.pop('_id', None)
+            results.append(record)
+        return results
+
     def scan_all(self, target_key):
         # Simulates a linear scan across all nodes (High Latency)
-        start_time = time.time()
+        start_time = time.perf_counter()
         found_data = None
         path_taken = []
         
@@ -91,7 +100,7 @@ class StorageManager:
                 path_taken.append(f"FOUND in {node_id}")
                 break
             
-        end_time = time.time()
+        end_time = time.perf_counter()
         return {
             "result": found_data,
             "io_cost": (end_time - start_time) * 1000, # ms
@@ -101,7 +110,7 @@ class StorageManager:
 
     def scan_range(self, start_key, end_key):
         # Simulates a linear scan across all nodes to find keys in range
-        start_time = time.time()
+        start_time = time.perf_counter()
         results = []
         path_taken = []
         visited_nodes = []
@@ -126,7 +135,7 @@ class StorageManager:
                     "value": record
                 })
                     
-        end_time = time.time()
+        end_time = time.perf_counter()
         return {
             "results": sorted(results, key=lambda x: x['key']),
             "io_cost": (end_time - start_time) * 1000,

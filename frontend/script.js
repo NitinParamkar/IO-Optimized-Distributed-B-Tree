@@ -108,6 +108,9 @@ insertBtn.addEventListener('click', async () => {
             flashNode(data.location.node_id);
             renderTree(data.tree_structure);
             searchResult.textContent = `Inserted successfully into ${data.location.node_id}`;
+        } else if (data.error) {
+            logNetwork(`Error: ${data.error}`);
+            searchResult.textContent = `Error: ${data.error}`;
         }
     } catch (error) {
         console.error('Error:', error);
@@ -203,9 +206,14 @@ rangeBtn.addEventListener('click', async () => {
         const data = await response.json();
 
         if (data.results) {
-            // Format as a clean list of keys
-            const keysList = Array.isArray(data.results) ? data.results.join(', ') : data.results;
-            searchResult.textContent = `Keys found: [${keysList}]`;
+            // Format as a clean list of Key: Value
+            let keysList = '';
+            if (Array.isArray(data.results)) {
+                keysList = data.results.map(item => `${item.key}: ${item.value}`).join(', ');
+            } else {
+                keysList = JSON.stringify(data.results);
+            }
+            searchResult.textContent = `Found: [${keysList}]`;
 
             timeTakenDisplay.textContent = data.io_cost.toFixed(2);
             pathTakenDisplay.textContent = data.path_taken;
